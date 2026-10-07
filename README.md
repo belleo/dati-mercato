@@ -2,7 +2,15 @@
 
 Ogni mattina (lun-ven) scarica da Yahoo Finance (tramite yfinance) i prezzi della watchlist, calcola gli indicatori tecnici e pubblica `data/latest.csv` / `data/latest.json` su GitHub. La skill **analista-titoli** legge questo file invece di stimare SMA200, volatilità e forza relativa.
 
-## Setup sul mini PC Windows (una volta sola)
+## Esecuzione automatica: GitHub Actions
+
+Lo scarico gira su GitHub, senza bisogno del PC acceso: workflow `.github/workflows/dati-mercato.yml`, lun-ven alle 06:30 UTC (8:30 ora legale / 7:30 ora solare; GitHub può partire con 10-30 minuti di ritardo). Il lunedì registra la chiusura del venerdì, il martedì quella del lunedì, ecc.
+
+- Avvio manuale: *Actions → Dati mercato giornalieri → Run workflow*.
+- GitHub sospende i workflow pianificati dopo 60 giorni senza attività nel repository; i commit giornalieri dei dati lo tengono attivo.
+- L'attività pianificata di Windows descritta sotto è **disattivata** per non avere due aggiornamenti in conflitto: serve solo come alternativa (`Enable-ScheduledTask DatiMercato`).
+
+## Alternativa locale sul mini PC Windows
 
 1. **Crea il repository** su GitHub: nome `dati-mercato`, **pubblico** (contiene solo prezzi di mercato, nessun dato personale). Pubblico serve perché Claude lo legga senza token.
 2. **Clona e copia i file** (PowerShell):
