@@ -38,7 +38,32 @@ TRADING_DAYS = {"1m": 21, "3m": 63, "6m": 126, "12m": 252}
 
 
 # ---------------------------------------------------------------- download
+def use_windows_certs() -> None:
+    """Fa fidare curl_cffi (usato da yfinance) anche dei certificati di Windows.
+
+    Serve quando un antivirus (es. Avast Web Shield) ispeziona l'HTTPS con una
+    propria CA, presente nello store di Windows ma non in certifi.
+    Va chiamata prima di importare yfinance.
+    """
+    import os
+    import ssl
+
+    if sys.platform != "win32" or os.environ.get("SSL_CERT_FILE"):
+        return
+    import certifi
+
+    pems = [Path(certifi.where()).read_text(encoding="ascii")]
+    for store in ("ROOT", "CA"):
+        for der, enc, _ in ssl.enum_certificates(store):
+            if enc == "x509_asn":
+                pems.append(ssl.DER_cert_to_PEM_cert(der))
+    bundle = BASE / "cacert.pem"
+    bundle.write_text("\n".join(pems), encoding="ascii")
+    os.environ["SSL_CERT_FILE"] = str(bundle)
+
+
 def download_prices(tickers: list[str]) -> dict[str, pd.Series]:
+    use_windows_certs()
     import yfinance as yf
 
     raw = yf.download(
@@ -66,6 +91,7 @@ def download_prices(tickers: list[str]) -> dict[str, pd.Series]:
 
 
 def download_fundamentals(tickers: list[str]) -> dict[str, dict]:
+    use_windows_certs()
     import yfinance as yf
 
     keys = {
