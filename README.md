@@ -1,16 +1,15 @@
 # dati-mercato
 
-Ogni sera scarica da Yahoo Finance (tramite yfinance) i prezzi della watchlist, calcola gli indicatori tecnici e pubblica `data/latest.csv` / `data/latest.json` su GitHub. La skill **analista-titoli** legge questo file invece di stimare SMA200, volatilità e forza relativa.
+Ogni mattina (lun-ven) scarica da Yahoo Finance (tramite yfinance) i prezzi della watchlist, calcola gli indicatori tecnici e pubblica `data/latest.csv` / `data/latest.json` su GitHub. La skill **analista-titoli** legge questo file invece di stimare SMA200, volatilità e forza relativa.
 
 ## Setup sul mini PC Windows (una volta sola)
 
 1. **Crea il repository** su GitHub: nome `dati-mercato`, **pubblico** (contiene solo prezzi di mercato, nessun dato personale). Pubblico serve perché Claude lo legga senza token.
 2. **Clona e copia i file** (PowerShell):
    ```powershell
-   cd C:\
+   cd C:\Trading\GitHub
    git clone https://github.com/Belleo/dati-mercato.git
-   # copia dentro C:\dati-mercato i file di questo pacchetto
-   cd C:\dati-mercato
+   cd C:\Trading\GitHub\dati-mercato
    python -m venv .venv
    .venv\Scripts\pip install -r requirements.txt
    ```
@@ -19,11 +18,18 @@ Ogni sera scarica da Yahoo Finance (tramite yfinance) i prezzi della watchlist, 
    .venv\Scripts\python market_data.py --push
    ```
    Verifica che su GitHub compaia `data/latest.csv`.
-4. **Pianifica l'esecuzione serale**:
+4. **Pianifica l'esecuzione mattutina** (PowerShell):
    ```powershell
-   schtasks /Create /TN "DatiMercato" /TR "C:\dati-mercato\run_daily.bat" /SC WEEKLY /D MON,TUE,WED,THU,FRI /ST 22:45 /F
+   $action   = New-ScheduledTaskAction -Execute "C:\Trading\GitHub\dati-mercato\run_daily.bat"
+   $trigger  = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At 09:00
+   $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -RunOnlyIfNetworkAvailable -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 10) -ExecutionTimeLimit (New-TimeSpan -Hours 1)
+   Register-ScheduledTask -TaskName "DatiMercato" -Action $action -Trigger $trigger -Settings $settings -Force
    ```
-   22:45 = dopo la chiusura di Wall Street (22:00 ora italiana). In *Utilità di pianificazione → DatiMercato → Proprietà* spunta "Esegui anche se l'utente non è connesso" e, in *Condizioni*, "Riattiva il computer per eseguire l'attività" se il PC va in sospensione.
+   - Lun-ven alle 09:00: il lunedì registra la chiusura del venerdì, il martedì quella del lunedì, ecc.
+   - **Recupero**: se alle 09:00 il PC è spento, l'attività parte appena il PC viene acceso e l'utente accede (`-StartWhenAvailable`), solo con la rete disponibile.
+   - Se lo scarico o il push falliscono, riprova fino a 3 volte ogni 10 minuti.
+   - Se il recupero avviene a mercati aperti, `prezzo` è un valore intraday: viene sostituito dalla chiusura alla successiva esecuzione.
+   - Facoltativo, in *Utilità di pianificazione → DatiMercato → Proprietà*: "Esegui indipendentemente dalla connessione dell'utente" (chiede la password di Windows) e, in *Condizioni*, "Riattiva il computer per eseguire l'attività" se il PC va in sospensione.
 
 ## Modificare la watchlist
 
@@ -47,4 +53,5 @@ Valori percentuali in decimali (0.05 = +5%). Con `--fundamentals` aggiunge capit
 ## Problemi comuni
 
 - **Nessun dato**: yfinance è non ufficiale; aggiorna con `.venv\Scripts\pip install -U yfinance`.
+- **Errore `CertificateVerifyError` / "unable to get local issuer certificate"**: un antivirus (es. Avast Web Shield) ispeziona l'HTTPS. Lo script lo gestisce da solo (`use_windows_certs()`: unisce certifi e i certificati di Windows in `cacert.pem`).
 - **Push fallito**: controlla `log.txt`; rifai un push manuale per rinnovare le credenziali.
