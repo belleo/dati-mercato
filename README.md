@@ -21,12 +21,12 @@ Ogni mattina (lun-ven) scarica da Yahoo Finance (tramite yfinance) i prezzi dell
 4. **Pianifica l'esecuzione mattutina** (PowerShell):
    ```powershell
    $action   = New-ScheduledTaskAction -Execute "C:\Trading\GitHub\dati-mercato\run_daily.bat"
-   $trigger  = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At 09:00
+   $trigger  = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At 08:50
    $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -RunOnlyIfNetworkAvailable -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 10) -ExecutionTimeLimit (New-TimeSpan -Hours 1)
    Register-ScheduledTask -TaskName "DatiMercato" -Action $action -Trigger $trigger -Settings $settings -Force
    ```
-   - Lun-ven alle 09:00: il lunedì registra la chiusura del venerdì, il martedì quella del lunedì, ecc.
-   - **Recupero**: se alle 09:00 il PC è spento, l'attività parte appena il PC viene acceso e l'utente accede (`-StartWhenAvailable`), solo con la rete disponibile.
+   - Lun-ven alle 08:50: il lunedì registra la chiusura del venerdì, il martedì quella del lunedì, ecc.
+   - **Recupero**: se alle 08:50 il PC è spento, l'attività parte appena il PC viene acceso e l'utente accede (`-StartWhenAvailable`), solo con la rete disponibile.
    - Se lo scarico o il push falliscono, riprova fino a 3 volte ogni 10 minuti.
    - Se il recupero avviene a mercati aperti, `prezzo` è un valore intraday: viene sostituito dalla chiusura alla successiva esecuzione.
    - Facoltativo, in *Utilità di pianificazione → DatiMercato → Proprietà*: "Esegui indipendentemente dalla connessione dell'utente" (chiede la password di Windows) e, in *Condizioni*, "Riattiva il computer per eseguire l'attività" se il PC va in sospensione.
