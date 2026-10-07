@@ -1,0 +1,38 @@
+name: Dati mercato giornalieri
+
+on:
+  schedule:
+    # Lun-Ven 06:30 UTC = 8:30 ora legale / 7:30 ora solare (chiusure del giorno prima,
+    # prima dell'apertura di Borsa Italiana anche con i ritardi tipici di GitHub)
+    - cron: "30 6 * * 1-5"
+  workflow_dispatch: {}   # avvio manuale dal tab Actions
+
+permissions:
+  contents: write
+
+jobs:
+  aggiorna:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Installa dipendenze
+        run: pip install -r requirements.txt
+
+      - name: Scarica dati e calcola indicatori
+        run: python market_data.py
+
+      - name: Pubblica nel repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add data
+          git diff --cached --quiet && echo "Nessuna modifica" && exit 0
+          git commit -m "Dati mercato $(date -u +%F)"
+          git pull --rebase
+          git push
